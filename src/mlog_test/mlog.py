@@ -1,25 +1,31 @@
 import os
-
 import sqlite3
+
 import pandas as pd
-
-
-# TODO: right way to do it?
-def connect(*args, **kwargs):
-    return Project(*args, **kwargs)
 
 
 class Project:
 
     def __init__(self, project=None):
 
-        self.project = project if project is not None else 'default'
+        self.project = project if project is not None else 'project'
 
         con = sqlite3.connect(f'{self.project}.db')
 
         with con:
-            con.execute('CREATE TABLE IF NOT EXISTS confs (_id INT PRIMARY KEY, _name VARCHAR(255))')
-            con.execute('CREATE TABLE IF NOT EXISTS runs (_id INT PRIMARY KEY, _run_id INT, FOREIGN KEY (_run_id) REFERENCES confs (_id))')
+
+            con.execute('''
+                CREATE TABLE IF NOT EXISTS confs (
+                    _id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    _name VARCHAR(255))
+                ''')
+
+            con.execute('''
+                CREATE TABLE IF NOT EXISTS runs (
+                    _id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    _run_id INT,
+                    FOREIGN KEY (_run_id) REFERENCES confs (_id))
+                ''')
 
         con.close()
 
@@ -32,6 +38,7 @@ class Project:
         con = sqlite3.connect(f'{self.project}.db')
 
         columns = ",".join(columns)
+        # TODO: catch errors with empty tables
         data = pd.read_sql_query(f"SELECT _id,{columns} FROM runs", con)
 
         return data
@@ -49,7 +56,6 @@ class Run:
         cur = con.cursor()
 
         if config is not None:
-
             # Retrieve existing columns
             columns = []
             for column in cur.execute('PRAGMA table_info(confs)'):
@@ -61,13 +67,13 @@ class Run:
                     # TODO: unsafe
                     cur.execute(f'ALTER TABLE confs ADD {key}')  # REAL?
 
-            # TODO: unsafe add statistics
+            # Add statistics
             columns = ",".join(config.keys())
             values = "','".join(map(str, config.values()))
+            # TODO: unsafe
             cur.execute(f"INSERT INTO confs ({columns}) VALUES ('{values}')")
 
         else:
-
             # TODO: check
             cur.execute('INSERT INTO confs () VALUES ()')
 
@@ -79,25 +85,28 @@ class Run:
         con.commit()
         con.close()
 
-    def log(self, statistics):
+    def log(self, **statistics):
 
         con = sqlite3.connect(self.path)
         con.row_factory = sqlite3.Row
 
         cur = con.cursor()
 
+        # Retrieve existing columns
         columns = []
         for column in cur.execute('PRAGMA table_info(runs)'):
             columns.append(column['name'])
 
+        # Add missing columns
         for key in statistics.keys():
             if key not in columns:
                 # TODO: unsafe
                 cur.execute(f'ALTER TABLE runs ADD {key} REAL')
 
-        # TODO: unsafe add logs
+        # Add logs
         columns = ",".join(statistics.keys())
         values = "','".join(map(str, statistics.values()))
+        # TODO: unsafe
         cur.execute(f"INSERT INTO runs (_run_id,{columns}) "
                     f"VALUES ('{self.run_id}','{values}')")
 
