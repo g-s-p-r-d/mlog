@@ -4,6 +4,9 @@ import sqlite3
 import pandas as pd
 
 
+# TODO: prevent problematic names (starting with _)
+
+
 class Project:
 
     def __init__(self, project=None):

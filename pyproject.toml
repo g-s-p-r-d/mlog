@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mlog_test"
-version = "0.0.15"
+version = "0.0.16"
 authors = [
   { name="gsprd" },
 ]
@@ -22,7 +22,11 @@ dependencies = [
     'matplotlib >= 3.5',
 ]
 
+[project.scripts]
+mlog = "mlog_test.cli:main"
+
 [project.urls]
 "Homepage" = "https://gitlab.com/gsprd/mlog"
 "Bug Tracker" = "https://gitlab.com/gsprd/mlog"
+
 

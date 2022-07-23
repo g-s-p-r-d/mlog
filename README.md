@@ -25,10 +25,8 @@ run = project.start(run='run', config=CONFIG)
 
 # Log seamlessly
 for epoch in range(CONFIG['num_epochs']):
-
     loss = random.random() * (1.05 ** (- epoch))
     run.log(epoch=epoch, loss=loss)
-
     metric = random.random()
     run.log(epoch=epoch, metric=metric)
 ```
@@ -36,13 +34,10 @@ for epoch in range(CONFIG['num_epochs']):
 ## Consulting
 
 ```sh
-mlog project plot epoch loss --group epoch
-mlog project plot epoch loss --group epoch --aggregate median
-mlog project plot epoch loss --group epoch --aggregate median --confidence max
-mlog project scatter epoch loss
+mlog project epoch loss --group
+mlog project epoch loss --group --aggregate median
+mlog project epoch loss --group --aggregate median --confidence max
 ```
-
-TODO: not implemented yet.
 
 ## Plotting
 
