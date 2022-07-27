@@ -1,10 +1,18 @@
 import os
+import re
 import sqlite3
 
 import pandas as pd
 
 
-# TODO: prevent problematic names (starting with _)
+# TODO: cli: merge several database?
+# TODO: propose code caching and outputs saving
+# TODO: add local .mlogconfig file
+#   - db path
+#   - remotes
+#   - source files
+#   - up files
+#   - down files
 
 
 class Project:
@@ -12,6 +20,8 @@ class Project:
     def __init__(self, project=None):
 
         self.project = project if project is not None else 'project'
+        if not re.fullmatch('[a-zA-Z_]+', self.project):
+            raise ValueError("Project name can only contain letters and _")
 
         con = sqlite3.connect(f'{self.project}.db')
 
@@ -40,6 +50,10 @@ class Project:
 
         con = sqlite3.connect(f'{self.project}.db')
 
+        for column in columns:
+            if not re.fullmatch('[a-zA-Z_]+', column):
+                raise ValueError("Column name can only contain letters and _")
+
         columns = ",".join(columns)
         # TODO: catch errors with empty tables
         data = pd.read_sql_query(f"SELECT _id,{columns} FROM runs", con)
@@ -50,6 +64,11 @@ class Project:
 class Run:
 
     def __init__(self, project, run=None, config=None):
+
+        if not re.fullmatch('[a-zA-Z_]+', project):
+            raise ValueError("Project name can only contain letters and _")
+        if not re.fullmatch('[a-zA-Z_]+', run):
+            raise ValueError("Run name can only contain letters and _")
 
         self.path = f'{project}.db'
 
@@ -68,7 +87,7 @@ class Run:
             for key in config.keys():
                 if key not in columns:
                     # TODO: unsafe
-                    cur.execute(f'ALTER TABLE confs ADD {key}')  # REAL?
+                    cur.execute(f'ALTER TABLE confs ADD {key}')
 
             # Add statistics
             columns = ",".join(config.keys())
@@ -95,6 +114,15 @@ class Run:
 
         cur = con.cursor()
 
+        # Check column names and values
+        for key, val in statistics.items():
+            if not re.fullmatch('[a-zA-Z_]+', key):
+                raise ValueError("Column name can only contain letters and _")
+            try:
+                float(val)
+            except ValueError:
+                raise ValueError("Only numbers can be logged")
+
         # Retrieve existing columns
         columns = []
         for column in cur.execute('PRAGMA table_info(runs)'):
@@ -109,7 +137,6 @@ class Run:
         # Add logs
         columns = ",".join(statistics.keys())
         values = "','".join(map(str, statistics.values()))
-        # TODO: unsafe
         cur.execute(f"INSERT INTO runs (_run_id,{columns}) "
                     f"VALUES ('{self.run_id}','{values}')")
 
