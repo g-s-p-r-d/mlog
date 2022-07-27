@@ -5,16 +5,16 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 
+# Run connection setup
+PROJECT = 'project'     # None: default database
+RUN = 'run'             # None: id as name
+
+
+# Configuration
+CONFIG = {'epochs': 100, 'lr': 1e-3, 'batch_size': 24}
+
+
 def main(args):
-
-    # Run connection setup
-    PROJECT = 'project'     # None: default database
-    RUN = 'run'             # None: id as name
-
-
-    # Configuration
-    CONFIG = {'epochs': 100, 'lr': 1e-3, 'batch_size': 24}
-
 
     # Connection
     project = mlog.connect(project=PROJECT)

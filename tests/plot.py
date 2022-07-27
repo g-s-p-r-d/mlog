@@ -28,5 +28,5 @@ def main(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    agrs = parser.parse_args()
+    args = parser.parse_args()
     main(args)
