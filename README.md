@@ -5,23 +5,19 @@ A minimal logging utility for machine learning experiments.
 ## Installation
 
 ```
-pip install -i https://test.pypi.org/simple/ \
-    --extra-index-url https://pypi.org/simple/ -U mlog-test
+pip install mlog
 ```
 
 ## Logging
 
 ```python3
-import mlog_test as mlog
+import mlog
 import random
 
 CONFIG = {'num_epochs': 100}
 
-# Connect to project database
-project = mlog.connect(project='project')
-
 # Create a new run with an associated configuration
-run = project.start(run='run', config=CONFIG)
+run = mlog.start(run='run_name', config=CONFIG, save='train.py')
 
 # Log seamlessly
 for epoch in range(CONFIG['num_epochs']):
@@ -31,12 +27,13 @@ for epoch in range(CONFIG['num_epochs']):
     run.log(epoch=epoch, metric=metric)
 ```
 
-## Consulting
+## Quick preview
 
 ```sh
-mlog project epoch loss --group
-mlog project epoch loss --group --aggregate median
-mlog project epoch loss --group --aggregate median --confidence max
+mlog plot epoch loss --group
+mlog plot epoch loss --group --aggregate median
+mlog plot epoch loss --group --aggregate median --intervals max
+mlog plot loss metric --scatter
 ```
 
 ## Plotting
@@ -45,11 +42,8 @@ mlog project epoch loss --group --aggregate median --confidence max
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# Connect to project database
-project = mlog.connect(project='project')
-
 # Retrieve data
-df = project.get('epoch', 'loss')
+df = mlog.get('epoch', 'loss')
 df = df.groupby('epoch').aggregate(['mean', 'min', 'max'])
 
 # Plot data
