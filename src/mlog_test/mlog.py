@@ -46,6 +46,8 @@ def get(*columns, filters=None):
 
     data = pd.read_sql_query(f"SELECT {columns} FROM logs", con)
 
+    con.close()
+
     return data.set_index('_id')
 
 
@@ -60,12 +62,6 @@ class Run:
                 f"Run name '{run}' does not use format '{KEY_FORMAT}'")
 
         con = sqlite3.connect(MLOG_DB)
-
-        with con:
-            con.execute(SQL_CREATE_RUNS_TABLE)
-            con.execute(SQL_CREATE_LOGS_TABLE)
-
-        # TODO: with con ?
         cur = con.cursor()
 
         if config:
@@ -114,34 +110,34 @@ class Run:
     def log(self, **logs):
 
         con = sqlite3.connect(MLOG_DB)
-        cur = con.cursor()
 
-        # Retrieve existing columns
-        cols = [col[1] for col in cur.execute("PRAGMA table_info(logs)")]
+        with con:
+            # Retrieve existing columns
+            cols = [col[1] for col in con.execute("PRAGMA table_info(logs)")]
 
-        # Check columns and values format and add missing columns
-        for key, val in logs.items():
+            # Check columns and values format and add missing columns
+            for key, val in logs.items():
 
-            if not re.fullmatch(KEY_FORMAT, key):
-                raise ValueError(
-                    f"Column '{key}' does not use format '{KEY_FORMAT}'")
+                if not re.fullmatch(KEY_FORMAT, key):
+                    raise ValueError(
+                        f"Column '{key}' does not use format '{KEY_FORMAT}'")
 
-            if key not in cols:
-                cur.execute(f"ALTER TABLE logs ADD {key} REAL")
+                if key not in cols:
+                    con.execute(f"ALTER TABLE logs ADD {key} REAL")
 
-            try:
-                float(val)
-            except ValueError:
-                raise ValueError(
-                    f"Value '{val}' for column '{key}' is not a number")
+                try:
+                    float(val)
+                except ValueError:
+                    raise ValueError(
+                        f"Value '{val}' for column '{key}' is not a number")
 
-        # Add run id
-        logs['_run_id'] = self.run_id
+            # Add run id
+            logs['_run_id'] = self.run_id
 
-        # Add logs
-        cols = ",".join(logs.keys())
-        vals = ":" + ",:".join(logs.keys())
-        cur.execute(f"INSERT INTO logs ({cols}) VALUES ({vals})", logs)
+            # Add logs
+            cols = ",".join(logs.keys())
+            vals = ":" + ",:".join(logs.keys())
+            con.execute(f"INSERT INTO logs ({cols}) VALUES ({vals})", logs)
 
         # Remove run id
         logs.pop('_run_id')
@@ -165,5 +161,7 @@ class Run:
 
         data = pd.read_sql_query(
             f"SELECT {columns} FROM logs WHERE _run_id = '{self.run_id}'", con)
+
+        con.close()
 
         return data.set_index('_id')
