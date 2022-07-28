@@ -27,15 +27,6 @@ CREATE TABLE IF NOT EXISTS logs (
 )
 """
 
-SQL_CREATE_REMOTES_TABLE = """
-CREATE TABLE IF NOT EXISTS remotes (
-    _id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR(255) UNIQUE,
-    path VARCHAR(255)
-)
-"""
-
-
 def start(run=None, config=None, save=None):
     return Run(run=run, config=config, save=save)
 
@@ -58,44 +49,6 @@ def get(*columns, filters=None):
     return data.set_index('_id')
 
 
-def add(args):
-
-    con = sqlite3.connect(MLOG_DB)
-
-    with con:
-        con.execute(f"INSERT INTO remotes (name, path) VALUES (?, ?)",
-                    (args.remote, args.path))
-
-    con.close()
-
-
-def remotes(args):
-
-    con = sqlite3.connect(MLOG_DB)
-
-    with con:
-        data = con.execute(f"SELECT name, path FROM remotes")
-        for row in data:
-            print(f"{row[0]}\t{row[1]}")
-
-    con.close()
-
-
-def remove(args):
-
-    con = sqlite3.connect(MLOG_DB)
-
-    with con:
-        con.execute(f"DELETE FROM remotes WHERE name = ?", args.remote)
-
-    con.close()
-
-
-def sync(args):
-
-    raise NotImplementedError
-
-
 class Run:
 
     def __init__(self, run=None, config=None, save=None):
@@ -111,7 +64,6 @@ class Run:
         with con:
             con.execute(SQL_CREATE_RUNS_TABLE)
             con.execute(SQL_CREATE_LOGS_TABLE)
-            con.execute(SQL_CREATE_REMOTES_TABLE)
 
         # TODO: with con ?
         cur = con.cursor()
