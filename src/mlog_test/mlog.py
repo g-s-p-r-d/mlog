@@ -1,154 +1,163 @@
-import os
 import re
 import sqlite3
-
 import pandas as pd
 
-
-# TODO: cli: merge several database?
-# TODO: propose code caching and outputs saving
-# TODO: add local .mlogconfig file
-#   - db path
-#   - remotes
-#   - source files
-#   - up files
-#   - down files
+from pathlib import Path
 
 
-class Project:
+MLOG_DIR = Path("./mlog")
+MLOG_DB = MLOG_DIR / "mlog.db"
+KEY_FORMAT = "[a-zA-Z][a-zA-Z0-9_]*"
+GET_FORMAT = "[a-zA-Z_][a-zA-Z0-9_]*"
 
-    def __init__(self, project=None):
+SQL_CREATE_RUNS_TABLE = """
+CREATE TABLE IF NOT EXISTS runs (
+    _id INTEGER PRIMARY KEY AUTOINCREMENT,
+    _name VARCHAR(255),
+    _source VARCHAR(255)
+)
+"""
 
-        self.project = project if project is not None else 'project'
-        if not re.fullmatch('[a-zA-Z_]+', self.project):
-            raise ValueError("Project name can only contain letters and _")
+SQL_CREATE_LOGS_TABLE = """
+CREATE TABLE IF NOT EXISTS logs (
+    _id INTEGER PRIMARY KEY AUTOINCREMENT,
+    _run_id INT,
+    FOREIGN KEY (_run_id) REFERENCES runs (_id)
+)
+"""
 
-        con = sqlite3.connect(f'{self.project}.db')
 
-        with con:
+def start(run=None, config=None, save=None):
+    return Run(run=run, config=config, save=save)
 
-            con.execute('''
-                CREATE TABLE IF NOT EXISTS confs (
-                    _id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    _name VARCHAR(255))
-                ''')
 
-            con.execute('''
-                CREATE TABLE IF NOT EXISTS runs (
-                    _id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    _run_id INT,
-                    FOREIGN KEY (_run_id) REFERENCES confs (_id))
-                ''')
+def get(*columns, filters=None):
 
-        con.close()
+    con = sqlite3.connect(MLOG_DB)
 
-    def start(self, run=None, config=None):
+    for column in columns:
+        if not re.fullmatch(GET_FORMAT, column):
+            raise ValueError(
+                f"Column '{column}' does not use format '{GET_FORMAT}'")
 
-        return Run(project=self.project, run=run, config=config)
+    columns = list(columns)
+    columns.append('_id')
+    columns = ",".join(columns)
 
-    def get(self, *columns):
+    data = pd.read_sql_query(f"SELECT {columns} FROM logs", con)
 
-        con = sqlite3.connect(f'{self.project}.db')
-
-        for column in columns:
-            if not re.fullmatch('[a-zA-Z_]+', column):
-                raise ValueError("Column name can only contain letters and _")
-
-        columns = ",".join(columns)
-        # TODO: catch errors with empty tables
-        data = pd.read_sql_query(f"SELECT _id,{columns} FROM runs", con)
-
-        return data
+    return data.set_index('_id')
 
 
 class Run:
 
-    def __init__(self, project, run=None, config=None):
+    def __init__(self, run=None, config=None, save=None):
 
-        if not re.fullmatch('[a-zA-Z_]+', project):
-            raise ValueError("Project name can only contain letters and _")
-        if not re.fullmatch('[a-zA-Z_]+', run):
-            raise ValueError("Run name can only contain letters and _")
+        MLOG_DIR.mkdir(parents=True, exist_ok=True)
 
-        self.path = f'{project}.db'
+        if save is not None:
+            raise NotImplementedError
 
-        con = sqlite3.connect(self.path)
-        con.row_factory = sqlite3.Row
+        if not re.fullmatch(KEY_FORMAT, run):
+            raise ValueError(
+                f"Run name '{run}' does not use format '{KEY_FORMAT}'")
 
+        con = sqlite3.connect(MLOG_DB)
+
+        with con:
+            con.execute(SQL_CREATE_RUNS_TABLE)
+            con.execute(SQL_CREATE_LOGS_TABLE)
+
+        # TODO: with con ?
         cur = con.cursor()
 
-        if config is not None:
+        if config:
+
             # Retrieve existing columns
-            columns = []
-            for column in cur.execute('PRAGMA table_info(confs)'):
-                columns.append(column['name'])
+            cols = [col[1] for col in cur.execute('PRAGMA table_info(runs)')]
 
-            # Add missing columns
+            # Check columns format and add missing columns
             for key in config.keys():
-                if key not in columns:
-                    # TODO: unsafe
-                    cur.execute(f'ALTER TABLE confs ADD {key}')
 
-            # Add statistics
-            columns = ",".join(config.keys())
-            values = "','".join(map(str, config.values()))
-            # TODO: unsafe
-            cur.execute(f"INSERT INTO confs ({columns}) VALUES ('{values}')")
+                if not re.fullmatch(KEY_FORMAT, key):
+                    raise ValueError(
+                        f"Column '{key}' does not use format '{KEY_FORMAT}'")
+
+                if key not in cols:
+                    cur.execute(f"ALTER TABLE runs ADD {key}")
+
+            # Add name
+            config["_name"] = run
+
+            # Add configs
+            cols = ",".join(config.keys())
+            vals = ":" + ",:".join(config.keys())
+            cur.execute(f"INSERT INTO runs ({cols}) VALUES ({vals})", config)
+
+            # Remove name
+            config.pop("_name")
 
         else:
-            # TODO: check
-            cur.execute('INSERT INTO confs () VALUES ()')
+            cur.execute("INSERT INTO runs DEFAULT VALUES")
 
         self.run_id = cur.lastrowid
-
-        cur.execute(f'UPDATE confs SET _name = (?) WHERE _id = (?)',
-                    (str(self.run_id), self.run_id))
 
         con.commit()
         con.close()
 
-    def log(self, **statistics):
+    def log(self, **logs):
 
-        con = sqlite3.connect(self.path)
-        con.row_factory = sqlite3.Row
-
+        con = sqlite3.connect(MLOG_DB)
         cur = con.cursor()
 
-        # Check column names and values
-        for key, val in statistics.items():
-            if not re.fullmatch('[a-zA-Z_]+', key):
-                raise ValueError("Column name can only contain letters and _")
+        # Retrieve existing columns
+        cols = [col[1] for col in cur.execute("PRAGMA table_info(logs)")]
+
+        # Check columns and values format and add missing columns
+        for key, val in logs.items():
+
+            if not re.fullmatch(KEY_FORMAT, key):
+                raise ValueError(
+                    f"Column '{key}' does not use format '{KEY_FORMAT}'")
+
+            if key not in cols:
+                cur.execute(f"ALTER TABLE logs ADD {key} REAL")
+
             try:
                 float(val)
             except ValueError:
-                raise ValueError("Only numbers can be logged")
+                raise ValueError(
+                    f"Value '{val}' for column '{key}' is not a number")
 
-        # Retrieve existing columns
-        columns = []
-        for column in cur.execute('PRAGMA table_info(runs)'):
-            columns.append(column['name'])
-
-        # Add missing columns
-        for key in statistics.keys():
-            if key not in columns:
-                # TODO: unsafe
-                cur.execute(f'ALTER TABLE runs ADD {key} REAL')
+        # Add run id
+        logs['_run_id'] = self.run_id
 
         # Add logs
-        columns = ",".join(statistics.keys())
-        values = "','".join(map(str, statistics.values()))
-        cur.execute(f"INSERT INTO runs (_run_id,{columns}) "
-                    f"VALUES ('{self.run_id}','{values}')")
+        cols = ",".join(logs.keys())
+        vals = ":" + ",:".join(logs.keys())
+        cur.execute(f"INSERT INTO logs ({cols}) VALUES ({vals})", logs)
+
+        # Remove run id
+        logs.pop('_run_id')
 
         con.commit()
         con.close()
 
     def get(self, *columns):
+        # TODO: call get with appropriate filter
 
-        con = sqlite3.connect(self.path)
+        con = sqlite3.connect(MLOG_DB)
 
+        for column in columns:
+            if not re.fullmatch(GET_FORMAT, column):
+                raise ValueError(
+                    f"Column '{column}' does not use format '{GET_FORMAT}'")
+
+        columns = list(columns)
+        columns.append('_id')
         columns = ",".join(columns)
-        data = pd.read_sql_query(f"SELECT _id,{columns} FROM runs "
-                                 f"WHERE _run_id = '{self.run_id}'", con)
 
-        return data
+        data = pd.read_sql_query(
+            f"SELECT {columns} FROM logs WHERE _run_id = '{self.run_id}'", con)
+
+        return data.set_index('_id')

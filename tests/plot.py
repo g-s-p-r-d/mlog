@@ -3,26 +3,21 @@ import mlog_test as mlog
 import matplotlib.pyplot as plt
 
 from argparse import ArgumentParser
-from train import PROJECT
 
 
 def main(args):
 
-    # Connection
-    project = mlog.connect(project=PROJECT)
-
     # Retrieve data
-    df = project.get('epoch', 'loss')
-    mean = df.groupby('epoch').mean().reset_index()
-    std = df.groupby('epoch').std().reset_index()
-    minimum = df.groupby('epoch').min().reset_index()
-    maximum = df.groupby('epoch').max().reset_index()
+    df = mlog.get('epoch', 'loss')
+    df = df.groupby('epoch').agg(['mean', 'std', 'min', 'max'])
 
     # Plot
     fig, ax = plt.subplots()
-    ax.plot(mean['epoch'], mean['loss'])
-    ax.fill_between(mean['epoch'], mean['loss'] - std['loss'],
-                    mean['loss'] + std['loss'], alpha=0.3)
+    ax.plot(df.index, df['loss']['mean'])
+    ax.fill_between(df.index,
+                    df['loss']['mean'] - df['loss']['std'],
+                    df['loss']['mean'] + df['loss']['std'],
+                    alpha=0.4)
     plt.show()
 
 

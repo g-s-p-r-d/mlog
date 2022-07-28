@@ -1,19 +1,32 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import mlog_test as mlog
 
 from argparse import ArgumentParser
 
 
-AGGREGATES = ['mean', 'median', 'min', 'max', 'std']
+AGGS = ['mean', 'median']
+INTS = ['std', 'max']
+
+REDUCTIONS = ['mean', 'median', 'min', 'max', 'std']
 
 
-def pull(args):
+def path(args):
+    pass
+
+
+def add(args):
+    pass
+
+
+def sync(args):
     pass
 
 
 def plot(args):
-    project = mlog.connect('project')
-    df = project.get('_run_id', args.x_axis, args.y_axis)
+
+    df = mlog.get('_run_id', args.x_axis, args.y_axis)
 
     if args.group and args.scatter:
         raise NotImplementedError("Grouping not implemented for scatter plots")
@@ -21,6 +34,7 @@ def plot(args):
     fig, ax = plt.subplots()
 
     if not args.group:
+
         if args.scatter:
             ax.scatter(df[args.x_axis], df[args.y_axis])
         else:
@@ -28,12 +42,13 @@ def plot(args):
                 ax.plot(run[args.x_axis], run[args.y_axis])
 
     else:
-        df = df.groupby(args.x_axis).aggregate(AGGREGATES)
 
-        if args.confidence == 'max':
+        df = df.groupby(args.x_axis).agg(REDUCTIONS)
+
+        if args.intervals == 'max':
             df['_lower'] = df[args.y_axis]['min']
             df['_upper'] = df[args.y_axis]['max']
-        elif args.confidence == 'std':
+        elif args.intervals == 'std':
             df['_lower'] = df[args.y_axis]['mean'] - df[args.y_axis]['std']
             df['_upper'] = df[args.y_axis]['mean'] + df[args.y_axis]['std']
 
@@ -43,6 +58,8 @@ def plot(args):
     ax.set_xlabel(args.x_axis)
     ax.set_ylabel(args.y_axis)
 
+    plt.tight_layout()
+
     if args.output is not None:
         plt.savefig(args.output)
 
@@ -50,33 +67,39 @@ def plot(args):
 
 
 def main():
-    # TODO: improve confidence intervals by defining aggregation functions
-    # TODO: implement stderr confidence intervals
-    # TODO: implement quantiles confidence intervals
 
     parser = ArgumentParser()
+    subparsers = parser.add_subparsers(dest='command', required=True)
 
-    subparser = parser.add_subparsers(required=True, dest='command')
-    parser_plot = subparser.add_parser('plot')
-    parser_pull = subparser.add_parser('pull')
+    # Path
+    parser_path = subparsers.add_parser('path')
+    parser_path.set_defaults(func=path)
+    parser_path.add_argument('path')
 
-    parser_plot.add_argument('project')
+    # Add
+    parser_add = subparsers.add_parser('add')
+    parser_add.set_defaults(func=add)
+    parser_add.add_argument('remote', nargs='+')
+
+    # Sync
+    parser_sync = subparsers.add_parser('sync')
+    parser_sync.set_defaults(func=sync)
+    parser_sync.add_argument('remote', nargs='*')
+
+    # Plot
+    parser_plot = subparsers.add_parser('plot')
+    parser_plot.set_defaults(func=plot)
     parser_plot.add_argument('x_axis')
     parser_plot.add_argument('y_axis')
 
-    parser_plot.add_argument('-g', '--group', action='store_true')
-    parser_plot.add_argument('-a', '--aggregate', choices=('mean', 'median'),
-                             default='mean')
-    parser_plot.add_argument('-c', '--confidence', choices=('std', 'max'),
-                             default='std')
-
     parser_plot.add_argument('-s', '--scatter', action='store_true')
+
+    parser_plot.add_argument('-g', '--group', action='store_true')
+    parser_plot.add_argument('-a', '--aggregate', choices=AGGS, default='mean')
+    parser_plot.add_argument('-i', '--intervals', choices=INTS, default='std')
 
     parser_plot.add_argument('-o', '--output')
 
+    # Parse arguments and execute command
     args = parser.parse_args()
-
-    if args.command == 'plot':
-        plot(args)
-    elif args.command == 'pull':
-        pull(args)
+    args.func(args)

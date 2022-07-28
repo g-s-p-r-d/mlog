@@ -1,4 +1,1 @@
-from .mlog import Project
-
-def connect(*args, **kwargs):
-    return Project(*args, **kwargs)
+from .mlog import start, get

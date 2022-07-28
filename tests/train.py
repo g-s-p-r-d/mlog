@@ -5,21 +5,16 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 
-# Run connection setup
-PROJECT = 'project'     # None: default database
-RUN = 'run'             # None: id as name
-
-
-# Configuration
+# Run configuration
+RUN = 'run'
 CONFIG = {'epochs': 100, 'lr': 1e-3, 'batch_size': 24}
+SAVE = None
 
 
 def main(args):
 
     # Connection
-    project = mlog.connect(project=PROJECT)
-    run = project.start(run=RUN, config=CONFIG)
-
+    run = mlog.start(run=RUN, config=CONFIG, save=SAVE)
 
     # Training
     for epoch in range(CONFIG['epochs']):
