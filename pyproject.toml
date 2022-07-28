@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "mlog"
-version = "0.0.17"
+name = "pymlog"
+version = "0.0.24"
 authors = [
   { name="gsprd" },
 ]

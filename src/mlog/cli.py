@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import mlog_test as mlog
+import mlog
 
 from argparse import ArgumentParser
 

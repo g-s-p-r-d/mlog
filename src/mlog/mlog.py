@@ -55,8 +55,6 @@ class Run:
 
     def __init__(self, run=None, config=None, save=None):
 
-        MLOG_DIR.mkdir(parents=True, exist_ok=True)
-
         if run is not None and not re.fullmatch(KEY_FORMAT, run):
             raise ValueError(
                 f"Run name '{run}' does not use format '{KEY_FORMAT}'")

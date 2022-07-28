@@ -5,7 +5,7 @@ A minimal logging utility for machine learning experiments.
 ## Installation
 
 ```
-pip install mlog
+pip install pymlog
 ```
 
 ## Logging
@@ -30,17 +30,18 @@ for epoch in range(CONFIG['num_epochs']):
 ## Quick preview
 
 ```sh
-mlog plot epoch loss --group
-mlog plot epoch loss --group --aggregate median
-mlog plot epoch loss --group --aggregate median --intervals max
+mlog plot epoch loss
+mlog plot epoch loss --aggregate median
+mlog plot epoch loss --aggregate median --intervals max
 mlog plot loss metric --scatter
 ```
 
 ## Plotting
 
 ```python3
-import matplotlib.pyplot as plt
+import mlog
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Retrieve data
 df = mlog.get('epoch', 'loss')

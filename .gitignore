@@ -2,3 +2,4 @@ dist/
 **/*.db
 venv/
 tests/mlog
+pymlog.egg-info

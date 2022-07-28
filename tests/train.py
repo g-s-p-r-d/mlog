@@ -1,5 +1,5 @@
 import random
-import mlog_test as mlog
+import mlog
 import matplotlib.pyplot as plt
 
 from argparse import ArgumentParser
