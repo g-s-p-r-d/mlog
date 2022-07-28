@@ -12,10 +12,6 @@ INTS = ['std', 'max']
 REDUCTIONS = ['mean', 'median', 'min', 'max', 'std']
 
 
-def path(args):
-    pass
-
-
 def add(args):
     pass
 
@@ -28,21 +24,16 @@ def plot(args):
 
     df = mlog.get('_run_id', args.x_axis, args.y_axis)
 
-    if args.group and args.scatter:
-        raise NotImplementedError("Grouping not implemented for scatter plots")
-
     fig, ax = plt.subplots()
 
-    if not args.group:
+    if args.scatter:
+        ax.scatter(df[args.x_axis], df[args.y_axis])
 
-        if args.scatter:
-            ax.scatter(df[args.x_axis], df[args.y_axis])
-        else:
-            for run_id, run in df.groupby('_run_id'):
-                ax.plot(run[args.x_axis], run[args.y_axis])
+    elif args.ungroup:
+        for run_id, run in df.groupby('_run_id'):
+            ax.plot(run[args.x_axis], run[args.y_axis])
 
     else:
-
         df = df.groupby(args.x_axis).agg(REDUCTIONS)
 
         if args.intervals == 'max':
@@ -71,11 +62,6 @@ def main():
     parser = ArgumentParser()
     subparsers = parser.add_subparsers(dest='command', required=True)
 
-    # Path
-    parser_path = subparsers.add_parser('path')
-    parser_path.set_defaults(func=path)
-    parser_path.add_argument('path')
-
     # Add
     parser_add = subparsers.add_parser('add')
     parser_add.set_defaults(func=add)
@@ -93,8 +79,7 @@ def main():
     parser_plot.add_argument('y_axis')
 
     parser_plot.add_argument('-s', '--scatter', action='store_true')
-
-    parser_plot.add_argument('-g', '--group', action='store_true')
+    parser_plot.add_argument('-u', '--ungroup', action='store_true')
     parser_plot.add_argument('-a', '--aggregate', choices=AGGS, default='mean')
     parser_plot.add_argument('-i', '--intervals', choices=INTS, default='std')
 
