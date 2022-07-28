@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 # Run configuration
 RUN = 'run'
 CONFIG = {'epochs': 100, 'lr': 1e-3, 'batch_size': 24}
-SAVE = None
+SAVE = '*.py'
 
 
 def main(args):

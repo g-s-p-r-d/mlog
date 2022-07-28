@@ -1,4 +1,5 @@
 import re
+import shutil
 import sqlite3
 import pandas as pd
 
@@ -101,10 +102,7 @@ class Run:
 
         MLOG_DIR.mkdir(parents=True, exist_ok=True)
 
-        if save is not None:
-            raise NotImplementedError
-
-        if not re.fullmatch(KEY_FORMAT, run):
+        if run is not None and not re.fullmatch(KEY_FORMAT, run):
             raise ValueError(
                 f"Run name '{run}' does not use format '{KEY_FORMAT}'")
 
@@ -151,6 +149,15 @@ class Run:
 
         con.commit()
         con.close()
+
+        # Save files
+        if save is not None:
+
+            save_directory = MLOG_DIR / str(self.run_id)
+            save_directory.mkdir()
+
+            for file in Path('.').glob(save):
+                shutil.copy(file, save_directory)
 
     def log(self, **logs):
 
