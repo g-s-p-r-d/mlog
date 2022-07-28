@@ -3,6 +3,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import mlog_test as mlog
 
+from mlog_test.mlog import add, remotes, remove, sync
+
 from argparse import ArgumentParser
 
 
@@ -10,14 +12,6 @@ AGGS = ['mean', 'median']
 INTS = ['std', 'max']
 
 REDUCTIONS = ['mean', 'median', 'min', 'max', 'std']
-
-
-def add(args):
-    pass
-
-
-def sync(args):
-    pass
 
 
 def plot(args):
@@ -65,7 +59,17 @@ def main():
     # Add
     parser_add = subparsers.add_parser('add')
     parser_add.set_defaults(func=add)
-    parser_add.add_argument('remote', nargs='+')
+    parser_add.add_argument('remote')
+    parser_add.add_argument('path')
+
+    # List
+    parser_remotes = subparsers.add_parser('remotes')
+    parser_remotes.set_defaults(func=remotes)
+
+    # Remove
+    parser_remove = subparsers.add_parser('remove')
+    parser_remove.set_defaults(func=remove)
+    parser_remove.add_argument('remote', nargs='+')
 
     # Sync
     parser_sync = subparsers.add_parser('sync')
