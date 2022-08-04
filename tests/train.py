@@ -5,27 +5,18 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 
-# Run configuration
-RUN = 'run'
-CONFIG = {'epochs': 100, 'lr': 1e-3, 'batch_size': 24}
-SAVE = '*.py'
+CONFIG = {'epochs': 100, 'lr': 1e-3, 'batch_size': 32}
 
 
 def main(args):
+    run = mlog.start(run='run', config=CONFIG, save='*.py')
 
-    # Connection
-    run = mlog.start(run=RUN, config=CONFIG, save=SAVE)
-
-    # Training
     for epoch in range(CONFIG['epochs']):
         loss = random.random() * (1.05 ** (- epoch))
         run.log(epoch=epoch, loss=loss)
 
-
-    # Plot run
     if args.plot:
         df = run.get('epoch', 'loss')
-
         df.plot('epoch', 'loss')
         plt.show()
 
