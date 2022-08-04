@@ -27,15 +27,19 @@ def display(df, index, key):
 
 def get_lines(df):
 
+    # Get number of lines
     num_runs = len(df)
+
+    # Check there are runs
     if num_runs == 0:
-        return None, 0, 0
+        return None, None, 0, 0
 
+    # Extract content and number of columns
     lines = df.to_string().splitlines()
-
     num_columns = max(map(len, lines)) + 1
+    header, lines = lines[0:2], lines[2:]
 
-    return lines, num_runs, num_columns
+    return header, lines, num_runs, num_columns
 
 
 def explore(window, args):
@@ -53,15 +57,17 @@ def explore(window, args):
 
     # Get inputs
     df = mlog.lst()
-    lines, num_runs, num_columns = get_lines(df)
+    header, lines, num_runs, num_columns = get_lines(df)
 
     if lines is None:
-        raise IndexError("Pas de runs")
+        raise IndexError("No runs")
 
     # Create pad
     pad = curses.newpad(num_runs + 2, num_columns)
 
-    # Write lines
+    # Write header and lines
+    screen.addstr(0, 0, header[0])
+    screen.addstr(1, 0, header[1])
     for i, line in enumerate(lines):
         pad.addstr(i, 0, line)
 
@@ -74,20 +80,20 @@ def explore(window, args):
     while True:
 
         if lines is None:
-            raise IndexError("Pas de runs")
+            raise IndexError("No runs")
 
         # TODO: min-max check outside of the cases
 
         # Refresh list and update cursor position
-        pad.addstr(index + 2, 0, lines[index + 2])
+        pad.addstr(index, 0, lines[index])
         index = next_index
         if index - top < 0:
             top = index
         elif index - top > curses.LINES - 1 - 2:
             top = index - curses.LINES + 1 + 2
         screen.move(index - top + 2, 0)
-        pad.addstr(index + 2, 0, lines[index + 2], curses.A_REVERSE)
-        pad.refresh(top, 0, 0, 0, curses.LINES - 1, curses.COLS - 1)
+        pad.addstr(index, 0, lines[index], curses.A_REVERSE)
+        pad.refresh(top, 0, 2, 0, curses.LINES - 1, curses.COLS - 1)
 
         # Update plot if necessary
         if args.explore:
@@ -133,11 +139,11 @@ def explore(window, args):
             mlog.delete(run_id)
 
             df = mlog.lst()
-            lines, num_runs, num_columns = get_lines(df)
+            header, lines, num_runs, num_columns = get_lines(df)
 
             next_index = index = max(0, min(index, num_runs - 1))
             if lines is None:
-                raise IndexError("Pas de runs")
+                raise IndexError("No runs")
 
             pad.clear()
             for i, line in enumerate(lines):
@@ -153,7 +159,7 @@ def lst(args):
     try:
         curses.wrapper(explore, args)
     except IndexError:
-        print('Pas de runs')
+        print('No runs')
 
 
 def plot(args):
