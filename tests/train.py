@@ -1,19 +1,20 @@
-import random
 import mlog
+import random
 import matplotlib.pyplot as plt
 
 from argparse import ArgumentParser
 
 
-CONFIG = {'epochs': 100, 'lr': 1e-3, 'batch_size': 32}
+CONFIG = {'num_epochs': 100, 'learning_rate': 1e-3, 'batch_size': 32}
 
 
 def main(args):
     run = mlog.start(run='run', config=CONFIG, save='*.py')
 
-    for epoch in range(CONFIG['epochs']):
+    for epoch in range(CONFIG['num_epochs']):
         loss = random.random() * (1.05 ** (- epoch))
-        run.log(epoch=epoch, loss=loss)
+        metric = random.random()
+        run.log(epoch=epoch, loss=loss, metric=metric)
 
     if args.plot:
         df = run.get('epoch', 'loss')

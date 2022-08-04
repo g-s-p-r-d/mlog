@@ -17,7 +17,7 @@ def display(df, index, key):
     run_df = mlog.get(key, _run_id=run_id)
 
     fig, ax = plt.subplots()
-    series = run_df[key]
+    series = run_df[key].dropna()
     ax.plot(range(len(series)), series)
     ax.set_ylabel(key)
     plt.tight_layout()
@@ -62,7 +62,7 @@ def explore(window, args):
     if lines is None:
         raise IndexError("No runs")
 
-    # Create pad
+    # Create pad (TODO: if new lines added, pad should grow)
     pad = curses.newpad(num_runs + 2, num_columns)
 
     # Write header and lines
@@ -130,6 +130,9 @@ def explore(window, args):
 
         elif c == ord('G'):
             next_index = num_runs - 1
+
+        elif c == ord(' '):
+            raise NotImplementedError
 
         elif c == ord('r'):
             raise NotImplementedError
@@ -218,7 +221,8 @@ def main():
     # List
     parser_list = subparsers.add_parser('list')
     parser_list.set_defaults(func=lst)
-    parser_list.add_argument('-e', '--explore')
+    # TODO: no explicit column choice, directly selected from the interface
+    parser_list.add_argument('-e', '--explore', help='Column to preview')
 
     # Plot
     parser_plot = subparsers.add_parser('plot')
