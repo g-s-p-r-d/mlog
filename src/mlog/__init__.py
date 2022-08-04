@@ -1,6 +1,6 @@
 import sqlite3
 
-from .mlog import start, get
+from .mlog import start, get, lst, delete
 from .mlog import MLOG_DIR, MLOG_DB
 from .mlog import SQL_CREATE_RUNS_TABLE, SQL_CREATE_LOGS_TABLE
 

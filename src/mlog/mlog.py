@@ -1,5 +1,6 @@
 import re
 import shutil
+import filecmp
 import sqlite3
 import pandas as pd
 
@@ -13,9 +14,8 @@ GET_FORMAT = "[a-zA-Z_][a-zA-Z0-9_]*"
 
 SQL_CREATE_RUNS_TABLE = """
 CREATE TABLE IF NOT EXISTS runs (
-    _id INTEGER PRIMARY KEY AUTOINCREMENT,
-    _name VARCHAR(255),
-    _source VARCHAR(255)
+    _run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    _name VARCHAR(255)
 )
 """
 
@@ -23,7 +23,7 @@ SQL_CREATE_LOGS_TABLE = """
 CREATE TABLE IF NOT EXISTS logs (
     _id INTEGER PRIMARY KEY AUTOINCREMENT,
     _run_id INT,
-    FOREIGN KEY (_run_id) REFERENCES runs (_id)
+    FOREIGN KEY (_run_id) REFERENCES runs (_run_id)
 )
 """
 
@@ -31,24 +31,83 @@ def start(run=None, config=None, save=None):
     return Run(run=run, config=config, save=save)
 
 
-def get(*columns, filters=None):
+def lst(*columns, filters=None):
+
+    if filters is not None:
+        raise NotImplementedError
+
+    con = sqlite3.connect(MLOG_DB)
+    data = pd.read_sql_query(f"SELECT * FROM runs", con)
+    con.close()
+
+    return data.set_index('_run_id')
+
+
+def get(*columns, **filters):
+
+    # TODO: implement filters with inequalities, etc
 
     con = sqlite3.connect(MLOG_DB)
 
-    for column in columns:
-        if not re.fullmatch(GET_FORMAT, column):
-            raise ValueError(
-                f"Column '{column}' does not use format '{GET_FORMAT}'")
+    # Retrieve existing columns
+    with con:
+        cols = (
+            [col[1] for col in con.execute("PRAGMA table_info(logs)")] +
+            [col[1] for col in con.execute("PRAGMA table_info(runs)")])
 
-    columns = list(columns)
-    columns.append('_id')
-    columns = ",".join(columns)
+    if columns:
+        for column in columns:
+            if not re.fullmatch(GET_FORMAT, column):
+                raise ValueError(
+                    f"Column '{column}' does not use format '{GET_FORMAT}'")
 
-    data = pd.read_sql_query(f"SELECT {columns} FROM logs", con)
+        columns = list(columns)
+        columns.append('_id')
+        columns = ",".join(columns)
+    else:
+        columns='*'
+
+    if filters:
+        for key, val in filters.items():
+            if not re.fullmatch(GET_FORMAT, key):
+                raise ValueError(
+                    f"Filter '{key}' does not use format '{GET_FORMAT}'")
+
+            if key not in cols:
+                raise ValueError(
+                    f"Filter '{key}' not in columns.")
+
+            if not re.fullmatch(GET_FORMAT, str(val)):
+                try:
+                    float(val)
+                except ValueError:
+                    raise ValueError(
+                        f"Value '{val}' for column '{key}' is not a number "
+                        f"nor a valid run name")
+
+        filters = ' AND '.join(f"{k} = {v}" for k, v in filters.items())
+    else:
+        filters='1'
+
+    data = pd.read_sql_query(f"SELECT {columns} FROM logs NATURAL JOIN runs "
+                             f"WHERE {filters}", con)
 
     con.close()
 
     return data.set_index('_id')
+
+
+def delete(run_id):
+
+    con = sqlite3.connect(MLOG_DB)
+    with con:
+        con.execute('DELETE FROM logs WHERE _run_id = ?', (str(run_id),))
+        con.execute('DELETE FROM runs WHERE _run_id = ?', (str(run_id),))
+        save_dir = MLOG_DIR / str(run_id)
+        if save_dir.is_symlink():
+            save_dir.unlink()
+
+    con.close()
 
 
 class Run:
@@ -99,11 +158,22 @@ class Run:
         # Save files
         if save is not None:
 
-            save_directory = MLOG_DIR / str(self.run_id)
-            save_directory.mkdir()
+            save_dir = MLOG_DIR / str(self.run_id)
+            save_dir.mkdir()
 
             for file in Path('.').glob(save):
-                shutil.copy(file, save_directory)
+                shutil.copy(file, save_dir)
+
+            # Symlink previous save if identical
+            prev_save_dir = MLOG_DIR / (str(self.run_id - 1))
+            if prev_save_dir.is_symlink():
+                prev_save_dir = prev_save_dir.readlink()
+
+            diff = filecmp.dircmp(save_dir, prev_save_dir)
+
+            if prev_save_dir.is_dir() and not diff.diff_files:
+                shutil.rmtree(save_dir)
+                save_dir.symlink_to(prev_save_dir, target_is_directory=True)
 
     def log(self, **logs):
 
@@ -144,22 +214,4 @@ class Run:
         con.close()
 
     def get(self, *columns):
-        # TODO: call get with appropriate filter
-
-        con = sqlite3.connect(MLOG_DB)
-
-        for column in columns:
-            if not re.fullmatch(GET_FORMAT, column):
-                raise ValueError(
-                    f"Column '{column}' does not use format '{GET_FORMAT}'")
-
-        columns = list(columns)
-        columns.append('_id')
-        columns = ",".join(columns)
-
-        data = pd.read_sql_query(
-            f"SELECT {columns} FROM logs WHERE _run_id = '{self.run_id}'", con)
-
-        con.close()
-
-        return data.set_index('_id')
+        return get(*columns, _run_id=self.run_id)
