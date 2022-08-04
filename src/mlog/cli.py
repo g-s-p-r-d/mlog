@@ -76,6 +76,8 @@ def explore(window, args):
         if lines is None:
             raise IndexError("Pas de runs")
 
+        # TODO: min-max check outside of the cases
+
         # Refresh list and update cursor position
         pad.addstr(index + 2, 0, lines[index + 2])
         index = next_index
@@ -112,10 +114,10 @@ def explore(window, args):
             raise NotImplementedError
 
         elif c == 4:  # CTRL-D
-            raise NotImplementedError
+            next_index = min(index + int((curses.LINES - 2) / 2), num_runs - 1)
 
         elif c == 21:  # CTRL-U
-            raise NotImplementedError
+            next_index = max(index - int((curses.LINES - 2) / 2), 0)
 
         elif c == ord('g'):
             next_index = 0
