@@ -215,6 +215,8 @@ class ParseKwargs(argparse.Action):
 
 def main():
 
+    # TODO: if no mlog dir, ask for a mlog init (automatic for mlog.start)
+    # TODO: `mlog list` is a command line output while `mlog` is interactive
     parser = ArgumentParser()
     subparsers = parser.add_subparsers(dest='command', required=True)
 

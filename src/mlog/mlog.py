@@ -123,6 +123,8 @@ class Run:
 
         if config:
 
+            config = vars(config)
+
             # Retrieve existing columns
             cols = [col[1] for col in cur.execute('PRAGMA table_info(runs)')]
 
